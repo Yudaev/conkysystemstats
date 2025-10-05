@@ -38,6 +38,7 @@ ${execi 3600 ~/.conky/SystemStats/scripts/os_installed.sh}
 
 ${font Ubuntu:bold:size=11}CPU${font} ${cpu}%  ${alignr}${execi 3 ~/.conky/SystemStats/scripts/cpu_temp.sh}
 ${cpubar 6}
+${execigraph 1 ~/.conky/SystemStats/scripts/cpu_usage.sh 40,0 color2 color 100}
 Freq: ${freq_g} GHz  ${alignr}Proc: ${processes} (run: ${running_processes})
 
 ${execpi 1 ~/.conky/SystemStats/scripts/cpu_cores.sh}
@@ -51,6 +52,7 @@ ${top name 5} ${alignr}${top cpu 5}%
 
 ${font Ubuntu:bold:size=11}RAM${font} ${memperc}% ${alignr}${mem} / ${memmax}
 ${membar 6}
+${execigraph 3 ~/.conky/SystemStats/scripts/mem_usage.sh 40,0 color2 color 100}
 SWAP: ${swap} / ${swapmax} ${alignr}${swapperc}%
 
 ${color1}Top MEM (5):${color}
@@ -62,6 +64,7 @@ ${top_mem name 5} ${alignr}${top_mem mem_res 5}
 
 ${execpi 2 ~/.conky/SystemStats/scripts/gpu.sh header}
 ${execibar 2 ~/.conky/SystemStats/scripts/gpu_util.sh}
+${execigraph 2 ~/.conky/SystemStats/scripts/gpu_util.sh 40,0 color2 color 100}
 ${execpi 2 ~/.conky/SystemStats/scripts/gpu.sh footer}
 
 ${color1}Top GPU (by SM, 5):${color}

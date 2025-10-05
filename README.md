@@ -3,7 +3,7 @@
 SystemStats is a carefully curated Conky dashboard that turns a plain desktop into an at–a-glance control centre. It surfaces real–time metrics for CPU, GPU, memory, network and the most demanding processes while keeping the layout dense, tidy and flicker–free. The project grew out of a “personal status HUD” and is now documented so that anyone—from a seasoned Linux tinkerer to a brand‑new user—can reproduce the same setup.
 
 <p align="center">
-  <img src="assets/dashboard.png" alt="SystemStats dashboard" width="220">
+  <img src="assets/dashboard-v.1.0.1.png" alt="SystemStats dashboard" width="220">
 </p>
 
 
@@ -34,7 +34,7 @@ SystemStats is a carefully curated Conky dashboard that turns a plain desktop in
 
 - **System header** – shows current date/time, uptime, load averages and the operating system install date (detected automatically via pacman logs on Arch‐based systems).
 - **CPU dashboard**
-  - Overall CPU usage bar with temperature summary.
+  - Overall CPU usage bar with temperature summary, plus a smoothed `${execigraph}` trace driven by `scripts/cpu_usage.sh`.
   - Per–core grid with logical core ID, load %, 3D cache marker, live frequency and temperature.
   - Top 5 CPU–hungry processes.
 - **GPU dashboard (NVIDIA)**
@@ -43,10 +43,10 @@ SystemStats is a carefully curated Conky dashboard that turns a plain desktop in
   - Clock and power draw line plus VRAM usage line.
   - Top 5 GPU workloads (SM utilisation) pulled from `nvidia-smi pmon`.
 - **RAM / Swap**
-  - Total RAM with percentage bar, swap usage and the top 5 memory consumers.
+  - Total RAM with percentage bar, a steady memory usage graph from `scripts/mem_usage.sh`, swap usage and the top 5 memory consumers.
 - **Network**
   - Active interface, IPv4 address, up/down speeds and total transferred bytes.
-  - Top 5 bandwidth‐heavy processes (`nethogs` backend) with caching to eliminate flicker.
+  - Top 5 bandwidth‐heavy processes (`nethogs` backend) with caching to eliminate flicker; rates shown as `↓123.4 KiB/s ↑567.8 KiB/s` for easy scanning.
 - **Quality of life**
   - Monospaced layout tuned for 240 px width on a second monitor.
   - Scripts written in POSIX/Bash with graceful fallbacks (no GPU? the GPU section prints placeholders).
@@ -60,9 +60,11 @@ SystemStats.conkyrc   # Main Conky configuration (text + layout)
 scripts/
  ├─ cpu_cores.sh      # Per-core load / frequency / temperature grid
  ├─ cpu_temp.sh       # CPU temperature line (reads hwmon/lm_sensors labels)
+ ├─ cpu_usage.sh      # Aggregate CPU utilisation sampled for execigraph
  ├─ gpu.sh            # GPU summary generator (header/footer modes)
  ├─ gpu_top.sh        # Top GPU processes (SM utilisation)
  ├─ gpu_util.sh       # Outputs GPU utilisation percentage for the bar
+ ├─ mem_usage.sh      # RAM usage percentage for execigraph
  ├─ net.sh            # Network interface summary
  ├─ net_top.sh        # Top processes by network throughput
  ├─ os_installed.sh   # Detects OS install date (pacman-based systems)
@@ -231,11 +233,13 @@ Name=Conky SystemStats
 |--------|-------------|-------|
 | `cpu_cores.sh` | Samples `/proc/stat` twice (400 ms apart) to compute per-core load, reads `/sys/.../cpufreq` for frequency, and `/sys/class/hwmon` for temps. Marks cores belonging to 3D cache with `3D`. | `CELLW`, `GROUP`, `COLS` env vars can tune layout. |
 | `cpu_temp.sh` | Outputs CPU temperature metrics (uses `hwmon` sensors). | Falls back gracefully if labels are missing. |
+| `cpu_usage.sh` | Collects aggregate CPU utilisation between two `/proc/stat` reads to feed Conky `${execigraph}`. | 300 ms sampling window keeps the graph smooth. |
 | `gpu.sh` | Main GPU summary. Accepts optional argument `header` or `footer` so Conky can place text around the load bar. | Requires `nvidia-smi`. |
 | `gpu_top.sh` | Collects GPU process stats via `nvidia-smi pmon`, sorts by SM utilisation, always prints 5 rows (with placeholders). | |
-| `gpu_util.sh` | Simple helper printing GPU utilisation as an integer for `${execibar}`. | |
+| `gpu_util.sh` | Simple helper printing GPU utilisation as an integer for `${execibar}`/`${execigraph}`. | |
+| `mem_usage.sh` | Derives RAM utilisation ratio from `/proc/meminfo` (`MemTotal` vs `MemAvailable`). | Feeds the RAM `${execigraph}` without depending on Conky internals. |
 | `net.sh` | Finds the active interface via `ip route`, prints IP, speeds, cumulative totals. | |
-| `net_top.sh` | Uses `nethogs` with caching to avoid flicker; sorts per-process traffic, outputs 5 rows. | Needs `nethogs` CAP_NET_ADMIN permissions (`sudo setcap 'cap_net_admin,cap_net_raw,cap_dac_read_search,cap_sys_ptrace+ep' /usr/bin/nethogs`). |
+| `net_top.sh` | Uses `nethogs` with caching to avoid flicker; sorts per-process traffic and prints inline arrows with per-direction KiB/s (`↓123.4 KiB/s ↑567.8 KiB/s`). | Needs `nethogs` CAP_NET_ADMIN permissions (`sudo setcap 'cap_net_admin,cap_net_raw,cap_dac_read_search,cap_sys_ptrace+ep' /usr/bin/nethogs`). |
 | `os_installed.sh` | Detects earliest package installation (Arch pacman logs) and prints “Installed: … (… ago)”. | Optional; prints `Installed: unknown` on non-pacman systems. |
 
 ### Environment Overrides

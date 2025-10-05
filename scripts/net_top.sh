@@ -8,7 +8,7 @@ CACHE=${CACHE:-/tmp/systemstats_net_top.cache}
 LOCKDIR="${CACHE}.lock"
 MAX_AGE=${MAX_AGE:-3}
 LINES=${LINES:-5}
-placeholder=$(printf "%-20s [%7s] ↓ %7.1f ↑ %7.1f" "none" "-------" 0.0 0.0)
+placeholder=$(printf "%-18s [%7s] ↓%s KiB/s ↑%s KiB/s" "none" "-------" "0.0" "0.0")
 
 collect() {
   tmp=$(mktemp)
@@ -38,7 +38,7 @@ collect() {
     recv_clean=$(awk -v v="${recv:-0}" 'BEGIN{gsub(/[^0-9.]/, "", v); if(v=="") v="0"; printf "%.3f", v+0}')
     total=$(awk -v s="$sent_clean" -v r="$recv_clean" 'BEGIN{printf "%.3f", s+r}')
 
-    out+=( "$(printf "%012.3f\t%-20.20s\t%7d\t%.1f\t%.1f" "$total" "$name" "$pid" "$recv_clean" "$sent_clean")" )
+    out+=( "$(printf "%012.3f\t%-18.18s\t%7d\t%.1f\t%.1f" "$total" "$name" "$pid" "$recv_clean" "$sent_clean")" )
   done
 
   mapfile -t top_lines < <(
@@ -46,7 +46,7 @@ collect() {
       printf '%s\n' "${out[@]}" \
         | sort -r \
         | head -n "$LINES" \
-        | awk -F'\t' '{ printf "%-20.20s [%7s] ↓ %7.1f ↑ %7.1f\n", $2, $3, $4, $5 }'
+        | awk -F'\t' '{ recv=sprintf("%.1f", $4); sent=sprintf("%.1f", $5); printf "%-18.18s [%7s] ↓%s KiB/s ↑%s KiB/s\n", $2, $3, recv, sent }'
     fi
   )
 
