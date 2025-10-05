@@ -1,0 +1,75 @@
+conky.config = {
+  update_interval = 1,
+  double_buffer   = true,
+
+  own_window      = true,
+  own_window_type = 'desktop',
+  own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+  own_window_argb_visual = true,
+  own_window_argb_value  = 0,
+
+  -- второй монитор, слева
+  xinerama_head = 1,
+  alignment = 'top_left',
+  gap_x = 20,
+  gap_y = 60,
+
+  use_xft = true,
+  font = 'DejaVu Sans Mono:size=11',
+  default_color = 'FFFFFF',
+  color1 = 'A0A0A0',
+  color2 = '87CEFA',
+
+  no_buffers = true,
+  cpu_avg_samples = 2,
+  net_avg_samples = 2,
+
+  draw_shades = false,
+  draw_outline = false,
+  draw_borders = false,
+
+  minimum_width = 200, minimum_height = 0,
+};
+
+conky.text = [[
+${font Ubuntu:bold:size=12}SYSTEM${font}   ${color1}${time %Y-%m-%d %H:%M:%S}${color}
+Uptime: ${uptime}   Load: ${loadavg 1} / ${loadavg 2} / ${loadavg 3}
+${execi 3600 ~/.conky/SystemStats/scripts/os_installed.sh}
+
+${font Ubuntu:bold:size=11}CPU${font} ${cpu}%  ${alignr}${execi 3 ~/.conky/SystemStats/scripts/cpu_temp.sh}
+${cpubar 6}
+Freq: ${freq_g} GHz  ${alignr}Proc: ${processes} (run: ${running_processes})
+
+${execpi 1 ~/.conky/SystemStats/scripts/cpu_cores.sh}
+
+${color1}Top CPU (5):${color}
+${top name 1} ${alignr}${top cpu 1}%
+${top name 2} ${alignr}${top cpu 2}%
+${top name 3} ${alignr}${top cpu 3}%
+${top name 4} ${alignr}${top cpu 4}%
+${top name 5} ${alignr}${top cpu 5}%
+
+${font Ubuntu:bold:size=11}RAM${font} ${memperc}% ${alignr}${mem} / ${memmax}
+${membar 6}
+SWAP: ${swap} / ${swapmax} ${alignr}${swapperc}%
+
+${color1}Top MEM (5):${color}
+${top_mem name 1} ${alignr}${top_mem mem_res 1}
+${top_mem name 2} ${alignr}${top_mem mem_res 2}
+${top_mem name 3} ${alignr}${top_mem mem_res 3}
+${top_mem name 4} ${alignr}${top_mem mem_res 4}
+${top_mem name 5} ${alignr}${top_mem mem_res 5}
+
+${execpi 2 ~/.conky/SystemStats/scripts/gpu.sh header}
+${execibar 2 ~/.conky/SystemStats/scripts/gpu_util.sh}
+${execpi 2 ~/.conky/SystemStats/scripts/gpu.sh footer}
+
+${color1}Top GPU (by SM, 5):${color}
+${execpi 2 ~/.conky/SystemStats/scripts/gpu_top.sh}
+
+${font Ubuntu:bold:size=11}NETWORK — Summary${font}
+${execpi 2 ~/.conky/SystemStats/scripts/net.sh}
+
+${color1}Top Network (proc, 5):${color}
+${execpi 2 ~/.conky/SystemStats/scripts/net_top.sh}
+]];
