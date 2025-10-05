@@ -184,10 +184,15 @@ Launch Conky once to ensure all sections populate. GPU and network tables show p
 # ~/.config/systemd/user/conky-systemstats.service
 [Unit]
 Description=Conky SystemStats dashboard
+After=graphical-session.target
+Wants=graphical-session.target
 
 [Service]
+Type=simple
 ExecStart=/usr/bin/conky -c %h/.config/conky/SystemStats/SystemStats.conkyrc
+ExecStartPre=/bin/sleep 5
 Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=default.target
@@ -198,6 +203,7 @@ Enable it:
 ```bash
 systemctl --user daemon-reload
 systemctl --user enable --now conky-systemstats.service
+systemctl --user status conky-systemstats.service
 ```
 
 ### Desktop environment autostart
