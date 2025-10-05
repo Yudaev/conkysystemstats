@@ -59,14 +59,13 @@ SystemStats is a carefully curated Conky dashboard that turns a plain desktop in
 SystemStats.conkyrc   # Main Conky configuration (text + layout)
 scripts/
  ├─ cpu_cores.sh      # Per-core load / frequency / temperature grid
- ├─ cpu_temp.sh       # CPU temperature line (leverages nvidia-smi when available)
+ ├─ cpu_temp.sh       # CPU temperature line (reads hwmon/lm_sensors labels)
  ├─ gpu.sh            # GPU summary generator (header/footer modes)
  ├─ gpu_top.sh        # Top GPU processes (SM utilisation)
  ├─ gpu_util.sh       # Outputs GPU utilisation percentage for the bar
  ├─ net.sh            # Network interface summary
  ├─ net_top.sh        # Top processes by network throughput
  ├─ os_installed.sh   # Detects OS install date (pacman-based systems)
- ├─ gpu_temp.sh       # Additional GPU temperature helpers (if needed)
  └─ ...               # Any future modules live here
 README.md             # You are here
 ```
@@ -93,7 +92,7 @@ Below is a comprehensive list of packages you need before launching Conky.
 | Component                | Purpose                                    | Arch package            | Debian/Ubuntu equivalent         |
 |-------------------------|--------------------------------------------|-------------------------|----------------------------------|
 | `conky`                 | Rendering engine                           | `conky`                 | `conky`                          |
-| `nvidia-utils`          | Provides `nvidia-smi`                      | `nvidia-utils`          | `nvidia-smi` (from NVIDIA driver)|
+| `nvidia-utils`          | Provides `nvidia-smi`                      | `nvidia-utils`          | Part of `nvidia-driver-<version>` / `nvidia-utils-<version>` |
 | `nethogs`               | Per-process network stats                  | `nethogs`               | `nethogs`                        |
 | `lm_sensors`            | Temperatures via `/sys/class/hwmon`        | `lm_sensors`            | `lm-sensors`                     |
 | `iproute2`              | Network interface discovery (`ip`)         | `iproute2` (base)       | `iproute2`                       |
@@ -115,8 +114,10 @@ sudo sensors-detect   # follow prompts, then reboot or run `sudo systemctl resta
 
 ```bash
 sudo apt update
-sudo apt install conky nvidia-smi nethogs lm-sensors
+sudo apt install conky nethogs lm-sensors nvidia-driver-535
 sudo sensors-detect    # optional, enables additional hwmon entries
+
+# Replace `nvidia-driver-535` with the driver version recommended for your GPU (`apt search nvidia-driver`).
 ```
 
 > **Note:** on Debian-based systems `os_installed.sh` will print “Installed: unknown” because it relies on pacman logs. Feel free to adapt the script for `dpkg` if needed.
@@ -127,8 +128,8 @@ sudo sensors-detect    # optional, enables additional hwmon entries
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/<your-account>/SystemStats.git
-   cd SystemStats
+   git clone https://github.com/Yudaev/conkysystemstats.git
+   cd conkysystemstats
    ```
 
 2. **Make scripts executable** (if not already)
@@ -163,9 +164,10 @@ Two common options:
 
 2. **Install to your Conky config**
    ```bash
-   mkdir -p ~/.config/conky
-   cp -r SystemStats/* ~/.config/conky/
-   conky -c ~/.config/conky/SystemStats.conkyrc
+   mkdir -p ~/.config/conky/SystemStats
+   cp SystemStats.conkyrc ~/.config/conky/SystemStats/
+   cp -r scripts assets ~/.config/conky/SystemStats/
+   conky -c ~/.config/conky/SystemStats/SystemStats.conkyrc
    ```
 
 Launch Conky once to ensure all sections populate. GPU and network tables show placeholders (e.g. `none [-------]`) until there is activity.
@@ -182,7 +184,7 @@ Launch Conky once to ensure all sections populate. GPU and network tables show p
 Description=Conky SystemStats dashboard
 
 [Service]
-ExecStart=/usr/bin/conky -c %h/.config/conky/SystemStats.conkyrc
+ExecStart=/usr/bin/conky -c %h/.config/conky/SystemStats/SystemStats.conkyrc
 Restart=on-failure
 
 [Install]
@@ -203,7 +205,7 @@ Alternatively create `~/.config/autostart/conky-systemstats.desktop` with:
 ```ini
 [Desktop Entry]
 Type=Application
-Exec=conky -c /home/<user>/.config/conky/SystemStats.conkyrc
+Exec=conky -c $HOME/.config/conky/SystemStats/SystemStats.conkyrc
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
