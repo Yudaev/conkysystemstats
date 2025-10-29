@@ -37,11 +37,11 @@ SystemStats is a carefully curated Conky dashboard that turns a plain desktop in
   - Overall CPU usage bar with temperature summary, plus a smoothed `${execigraph}` trace driven by `scripts/cpu_usage.sh`.
   - Per–core grid with logical core ID, load %, 3D cache marker, live frequency and temperature.
   - Top 5 CPU–hungry processes.
-- **GPU dashboard (NVIDIA)**
-  - One–line summary with utilisation %, temperatures (core and hotspot), fan speed.
-  - Utilisation bar (`execibar`) for quick load scanning.
-  - Clock and power draw line plus VRAM usage line.
-  - Top 5 GPU workloads (SM utilisation) pulled from `nvidia-smi pmon`.
+- **GPU dashboard (NVIDIA & AMD)**
+  - One–line summary with utilisation %, temperatures (core + hotspot for AMD), and fan telemetry.
+  - Vendor-aware helpers drive the utilisation bar (`execibar`) and the clock/power / VRAM lines.
+  - NVIDIA cards use `nvidia-smi`; AMD cards rely on `amdgpu` sysfs metrics (no extra tooling needed).
+  - Top GPU processes remain NVIDIA-specific (`nvidia-smi pmon`) with graceful placeholders elsewhere.
 - **RAM / Swap**
   - Total RAM with percentage bar, a steady memory usage graph from `scripts/mem_usage.sh`, swap usage and the top 5 memory consumers.
 - **Network**
@@ -100,6 +100,8 @@ Below is a comprehensive list of packages you need before launching Conky.
 | `iproute2`              | Network interface discovery (`ip`)         | `iproute2` (base)       | `iproute2`                       |
 | `procps-ng`, `coreutils`, `awk`, `sed`, `findutils`, `gzip` | Required by scripts | included in base system | included in base system |
 
+AMD support leans on the upstream `amdgpu` kernel driver exposing `/sys/class/drm/cardX` and matching `hwmon` entries — no additional utilities are required.
+
 ### Installing on Arch Linux / Manjaro
 
 ```bash
@@ -142,7 +144,8 @@ sudo sensors-detect    # optional, enables additional hwmon entries
 3. **Verify dependencies**
    ```bash
    conky -v              # confirm Conky is installed
-   nvidia-smi -L         # should list your GPU (optional)
+   nvidia-smi -L         # NVIDIA only: should list your GPU
+   ls /sys/class/drm/card*/gpu_busy_percent  # AMD only (optional): confirms sysfs metrics
    nethogs -V            # prints version
    ```
 
@@ -240,9 +243,9 @@ Name=Conky SystemStats
 | `cpu_cores.sh` | Samples `/proc/stat` twice (400 ms apart) to compute per-core load, reads `/sys/.../cpufreq` for frequency, and `/sys/class/hwmon` for temps. Marks cores belonging to 3D cache with `3D`. | `CELLW`, `GROUP`, `COLS` env vars can tune layout. |
 | `cpu_temp.sh` | Outputs CPU temperature metrics (uses `hwmon` sensors). | Falls back gracefully if labels are missing. |
 | `cpu_usage.sh` | Collects aggregate CPU utilisation between two `/proc/stat` reads to feed Conky `${execigraph}`. | 300 ms sampling window keeps the graph smooth. |
-| `gpu.sh` | Main GPU summary. Accepts optional argument `header` or `footer` so Conky can place text around the load bar. | Requires `nvidia-smi`. |
-| `gpu_top.sh` | Collects GPU process stats via `nvidia-smi pmon`, sorts by SM utilisation, always prints 5 rows (with placeholders). | |
-| `gpu_util.sh` | Simple helper printing GPU utilisation as an integer for `${execibar}`/`${execigraph}`. | |
+| `gpu.sh` | Main GPU summary (header/footer modes). Detects vendor and shows utilisation, temps (AMD hotspot included), clocks, power, VRAM and fan data. | NVIDIA → `nvidia-smi`; AMD → `/sys/class/drm` + `hwmon` (no extra tools). |
+| `gpu_top.sh` | Collects GPU process stats via `nvidia-smi pmon`, sorts by SM utilisation, always prints 5 rows (with placeholders). | Non-NVIDIA cards receive placeholders. |
+| `gpu_util.sh` | Simple helper printing GPU utilisation as an integer for `${execibar}`/`${execigraph}`. | Supports NVIDIA (`nvidia-smi`) and AMD (`gpu_busy_percent`). |
 | `mem_usage.sh` | Derives RAM utilisation ratio from `/proc/meminfo` (`MemTotal` vs `MemAvailable`). | Feeds the RAM `${execigraph}` without depending on Conky internals. |
 | `net.sh` | Finds the active interface via `ip route`, prints IP, speeds, cumulative totals. | |
 | `net_top.sh` | Uses `nethogs` with caching to avoid flicker; sorts per-process traffic and prints inline arrows with per-direction KiB/s (`↓123.4 KiB/s ↑567.8 KiB/s`). | Needs `nethogs` CAP_NET_ADMIN permissions (`sudo setcap 'cap_net_admin,cap_net_raw,cap_dac_read_search,cap_sys_ptrace+ep' /usr/bin/nethogs`). |
@@ -261,6 +264,9 @@ Several scripts read environment variables to adjust formatting without editing 
   - `MAX_AGE` – refresh interval in seconds (default 3).
 - `gpu_top.sh`
   - `LINES` – number of GPU processes to show (default 5).
+- `gpu.sh` / `gpu_util.sh`
+  - `GPU_VENDOR` – force vendor detection (`nvidia`, `amd`) if auto-detect misfires.
+  - `GPU_CARD` / `GPU_DRM_CARD` – override the `/sys/class/drm/cardX` path (useful on multi-GPU rigs).
 
 Export these before launching Conky (e.g., in `~/.profile`) to customise behaviour.
 
@@ -270,7 +276,7 @@ Export these before launching Conky (e.g., in `~/.profile`) to customise behavio
 
 | Symptom | Cause / Fix |
 |---------|-------------|
-| GPU section prints “GPU: NVIDIA не обнаружена” | `nvidia-smi` missing. Install appropriate NVIDIA utilities or hide the section by commenting it out in `SystemStats.conkyrc`. |
+| GPU section prints “GPU: … не обнаружена” | For NVIDIA ensure `nvidia-smi` (driver utils) is installed. For AMD ensure the open-source `amdgpu` driver is active and exposes `/sys/class/drm/cardX` (`lsmod | grep amdgpu`). |
 | Network top always shows `none` | `nethogs` requires elevated capabilities. Run `sudo setcap 'cap_net_admin,cap_net_raw,cap_dac_read_search,cap_sys_ptrace+ep' /usr/bin/nethogs`. |
 | Temperatures show `--°C` | `lm_sensors` not configured or your hardware exposes different labels. Run `sensors-detect` or edit `cpu_cores.sh` fallback logic. |
 | `os_installed.sh` prints “Installed: unknown” | You are not on a pacman-based distro. Either ignore the line or extend the script to parse `dpkg`/`rpm` metadata. |
